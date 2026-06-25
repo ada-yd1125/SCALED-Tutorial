@@ -119,12 +119,15 @@ def run(config: RunConfig) -> Path:
     with torch.no_grad():
         latent_x0 = compression_model.encode(x0) / 10
         latent_xbc = compression_model.encode(xbc) / 10
+        if use_fp16:
+            compression_model.to(dtype=torch.float32)
 
         for step in tqdm(range(config.steps), desc=f"L1 flow inference on {device}"):
             model_input = torch.cat([latent_x0, latent_xbc], dim=1)
             output = inference_model(model_input).sample
             latent_x0 = output.clone()
-            decoded = compression_model.decode(latent_x0 * 10)
+            decode_input = latent_x0.float() if use_fp16 else latent_x0
+            decoded = compression_model.decode(decode_input * 10)
             slice_data = decoded.detach().cpu().numpy()[0, 0, 4] * -3
 
             plt.figure(figsize=(5, 5))
