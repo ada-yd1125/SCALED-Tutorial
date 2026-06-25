@@ -1,4 +1,8 @@
 *.pth
+__pycache__/
+*.pyc
+outputs/
+result/
 *.png
 *.h5
 *.npy

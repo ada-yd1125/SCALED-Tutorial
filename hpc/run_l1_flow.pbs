@@ -1,0 +1,29 @@
+#!/bin/bash
+#PBS -N scaled_l1_flow
+#PBS -l select=1:ncpus=4:mem=48gb:ngpus=1
+#PBS -l walltime=00:30:00
+#PBS -j oe
+
+set -euo pipefail
+
+cd "${PBS_O_WORKDIR}"
+
+if [[ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]]; then
+    source "$HOME/miniconda3/etc/profile.d/conda.sh"
+elif [[ -f "$HOME/anaconda3/etc/profile.d/conda.sh" ]]; then
+    source "$HOME/anaconda3/etc/profile.d/conda.sh"
+else
+    module load anaconda3/personal 2>/dev/null || true
+    source "$(conda info --base)/etc/profile.d/conda.sh"
+fi
+
+conda activate scaled
+
+python scripts/run_l1_flow_inference.py \
+    --steps "${STEPS:-1}" \
+    --device cuda \
+    --precision fp16 \
+    --output-dir outputs/l1_flow_inference
+
+echo "Generated files:"
+find outputs/l1_flow_inference -maxdepth 1 -type f -print
