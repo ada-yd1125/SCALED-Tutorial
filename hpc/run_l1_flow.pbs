@@ -8,16 +8,10 @@ set -euo pipefail
 
 cd "${PBS_O_WORKDIR}"
 
-if [[ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]]; then
-    source "$HOME/miniconda3/etc/profile.d/conda.sh"
-elif [[ -f "$HOME/anaconda3/etc/profile.d/conda.sh" ]]; then
-    source "$HOME/anaconda3/etc/profile.d/conda.sh"
-else
-    module load anaconda3/personal 2>/dev/null || true
-    source "$(conda info --base)/etc/profile.d/conda.sh"
-fi
-
-conda activate scaled
+module purge
+module load tools/prod
+module load PyTorch/2.1.2-foss-2023a-CUDA-12.1.1
+source .venv/bin/activate
 
 python scripts/run_l1_flow_inference.py \
     --steps "${STEPS:-1}" \
