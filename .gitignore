@@ -1,6 +1,7 @@
 *.pth
 __pycache__/
 *.pyc
+.venv/
 outputs/
 result/
 *.png
