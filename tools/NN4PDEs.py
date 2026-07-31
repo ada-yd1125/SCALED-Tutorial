@@ -10,9 +10,9 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import h5py
 
-save_path = 'data/SCALED_dataset/south_kensington'
+save_path = os.environ.get('SCALED_FLOW_DIR', 'data/SCALED_dataset/south_kensington')
 os.makedirs(save_path,exist_ok=True)
-geometry_path = "data/geometry/INHALE_1280.npy"
+geometry_path = os.environ.get('SCALED_GEOMETRY_PATH', "data/geometry/INHALE_1280.npy")
 
 os.makedirs(save_path,exist_ok=True)
 
@@ -24,9 +24,11 @@ print(is_gpu)
 # # # ################################### # # #
 # # # ######   Numerial parameters ###### # # #
 # # # ################################### # # #
-nx = 1024
-ny = 1024
-nz = 64
+nx = int(os.environ.get("SCALED_NX", "1024"))
+ny = int(os.environ.get("SCALED_NY", "1024"))
+nz = int(os.environ.get("SCALED_NZ", "64"))
+if min(nx, ny, nz) <= 0:
+    raise ValueError("SCALED domain sizes must be positive")
 dx = 1.0 ; dy = 1.0 ; dz = 1.0
 Re = 0.15
 dt = 0.5
@@ -108,7 +110,7 @@ w_res = torch.zeros([1,1,2,2,2])
 w_res[0,0,:,:,:] = 0.125
 
 ################# Numerical parameters ################
-ntime = 10000                     # Time steps
+ntime = int(os.environ.get('SCALED_NTIME', '10000'))  # Time steps
 n_out = 1                       # Results output
 iteration = 5                    # Multigrid iteration
 nrestart = 0                      # Last time step for restart
@@ -162,17 +164,22 @@ if LIBM == True:
     mesh = np.load(geometry_path,allow_pickle=True)
     sigma = torch.zeros(input_shape, dtype=torch.float32, device=device)
     print(mesh.shape, sigma.shape)
-    for i in range(nz):
-        sigma[0,0,i,:,:] = torch.tensor(mesh[0,128:1152,128:1152,i,0])
-    sigma = sigma.transpose_(4, 3)
-    sigma = torch.flip(sigma, [3])
-    sigma = torch.where(sigma == 0, torch.tensor(1e08, dtype=torch.float32, device=device), torch.tensor(0, dtype=torch.float32, device=device))
+    if mesh.ndim == 3:
+        if mesh.shape != (nz, ny, nx):
+            raise ValueError(f"Expected 3D geometry shape {(nz, ny, nx)}, got {mesh.shape}")
+        sigma[0, 0] = torch.tensor(mesh, dtype=torch.float32, device=device) * 1e08
+    else:
+        for i in range(nz):
+            sigma[0,0,i,:,:] = torch.tensor(mesh[0,128:1152,128:1152,i,0])
+        sigma = sigma.transpose_(4, 3)
+        sigma = torch.flip(sigma, [3])
+        sigma = torch.where(sigma == 0, torch.tensor(1e08, dtype=torch.float32, device=device), torch.tensor(0, dtype=torch.float32, device=device))
     plt.imshow(sigma[0,0,4,:,:].cpu())
     plt.colorbar()
     plt.savefig('South_Kensington.jpg')
     plt.close()
     
-np.save('data/SCALED_dataset/south_kensington/sigma.npy', sigma.cpu().numpy())
+np.save(os.path.join(save_path, 'sigma.npy'), sigma.cpu().numpy())
 
 #######################################################
 # # # ################################### # # #
